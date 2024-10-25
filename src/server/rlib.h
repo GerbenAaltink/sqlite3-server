@@ -1,4 +1,4 @@
-// RETOOR - Oct 25 2024
+// RETOOR - Oct 26 2024
 // MIT License
 // ===========
 
@@ -613,6 +613,7 @@ char *rmalloc_stats() {
 #include <string.h>
 typedef struct rbuffer_t {
     unsigned char *data;
+    unsigned char *_data;
     size_t size;
     size_t pos;
     bool eof;
@@ -628,13 +629,15 @@ unsigned char *rbuffer_expect(rbuffer_t *rfb, char *options, char *ignore);
 void rbuffer_set(rbuffer_t *rfb, const unsigned char *data, size_t size);
 
 void rbuffer_set(rbuffer_t *rfb, const unsigned char *data, size_t size) {
-    if (rfb->data) {
-        free(rfb->data);
+    if (rfb->_data) {
+        free(rfb->_data);
+        rfb->_data = NULL;
         rfb->data = NULL;
         rfb->eof = true;
     }
     if (size) {
-        rfb->data = (unsigned char *)malloc(size);
+        rfb->_data = (unsigned char *)malloc(size);
+        rfb->data = rfb->_data;
         memcpy(rfb->data, data, size);
         rfb->eof = false;
     }
@@ -645,21 +648,29 @@ void rbuffer_set(rbuffer_t *rfb, const unsigned char *data, size_t size) {
 rbuffer_t *rbuffer_new(unsigned char *data, size_t size) {
     rbuffer_t *rfb = (rbuffer_t *)malloc(sizeof(rbuffer_t));
     if (size) {
-        rfb->data = (unsigned char *)malloc(size);
+        rfb->_data = (unsigned char *)malloc(size);
         memcpy(rfb->data, data, size);
         rfb->eof = false;
     } else {
-        rfb->data = NULL;
+        rfb->_data = NULL;
         rfb->eof = true;
     }
     rfb->size = size;
     rfb->pos = 0;
+    rfb->data = rfb->_data;
     return rfb;
 }
 void rbuffer_free(rbuffer_t *rfb) {
-    if (rfb->data)
-        free(rfb->data);
+    if (rfb->_data)
+        free(rfb->_data);
     free(rfb);
+}
+
+unsigned char *buffer_to_string(rbuffer_t *rfb) {
+    unsigned char *result = rfb->_data;
+    rfb->_data = NULL;
+    rbuffer_free(rfb);
+    return result;
 }
 
 size_t rbuffer_push(rbuffer_t *rfb, unsigned char c) {
@@ -719,6 +730,13 @@ unsigned char ustrncmp(const unsigned char *s1, const unsigned char *s2,
     return *s1 != *s2;
 }
 size_t ustrlen(const unsigned char *s) { return strlen((char *)s); }
+
+unsigned char *rbuffer_to_string(rbuffer_t *rfb) {
+    unsigned char *result = rfb->data;
+    rfb->data = NULL;
+    rbuffer_free(rfb);
+    return result;
+}
 
 unsigned char *rbuffer_match_option(rbuffer_t *rfb, char *options) {
     char *option = NULL;
@@ -1121,16 +1139,15 @@ unsigned char *rliza_seek_string(char **content, char *options) {
     char *content_original = *content;
     while (**content) {
         if (**content == '\r' || **content == '\n' || **content == ' ' ||
-            **content == '\t' || **content == '\\') {
-            if (**content == '\\' && *(*content + 1) == '"') {
+            **content == '\t') {
+            /*if (**content == '"') {
                 while (true) {
                     (*content)++;
-                    if (**content == '\\' && *(*content + 1) == '"') {
-                        (*content)++;
+                    if (**content == '"') {
                         break;
                     }
                 }
-            }
+            }*/
             (*content)++;
             continue;
         }
@@ -1177,17 +1194,20 @@ unsigned char *rliza_extract_quotes(char **content) {
     bool escaping = false;
     while (true) {
         (*content)++;
-        if (**content == '\\') {
+        if (**content == '\\' && !escaping) {
             escaping = true;
             (*content)++;
+            continue;
         } else if (**content == '"') {
             if (escaping) {
                 (*content)++;
                 escaping = false;
+                printf("WAS ESCPAING\n");
                 continue;
             }
             break;
         }
+        escaping = false;
         rbuffer_push(buffer, **content);
     }
     assert(**content == '"');
@@ -1263,6 +1283,9 @@ rliza_t *rliza_object_from_string(char **content) {
         rliza->content.boolean = false;
         *content += 5;
     } else if (**content == '"') {
+        if (*(*content - 1) == '\\') {
+            printf("ESCCAPEDD\n");
+        }
         unsigned char *extracted = rliza_extract_quotes((char **)content);
         bool is_number = true;
         unsigned char *ptr = extracted;
@@ -1284,7 +1307,7 @@ rliza_t *rliza_object_from_string(char **content) {
     return rliza;
 }
 unsigned char *rliza_object_to_string(rliza_t *rliza) {
-    unsigned char *content = (unsigned char *)malloc(1024 * 1024);
+    unsigned char *content = (unsigned char *)malloc(1024 * 1024 * 50);
     content[0] = 0;
     if (rliza->type == RLIZA_INTEGER) {
         if (rliza->key) {
@@ -1316,7 +1339,7 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
                     rliza->content.boolean ? "true" : "false");
         }
     } else if (rliza->type == RLIZA_OBJECT) {
-        strcat((char *)content, "{");
+        strcpy((char *)content, "{");
         for (unsigned i = 0; i < rliza->count; i++) {
             strcat((char *)content,
                    (char *)rliza_object_to_string(rliza->content.map[i]));
@@ -1326,16 +1349,17 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
         strcat((char *)content, "}");
     } else if (rliza->type == RLIZA_ARRAY) {
         if (rliza->key)
-            sprintf((char *)content, "\"%s\":", rliza->key);
-
-        strcat((char *)content, "[");
+            sprintf((char *)content, "\"%s\":[", rliza->key);
+        else
+            strcpy((char *)content, "[");
 
         for (unsigned i = 0; i < rliza->count; i++) {
             strcat((char *)content,
                    (char *)rliza_object_to_string(rliza->content.map[i]));
             strcat((char *)content, ",");
         }
-        content[strlen((char *)content) - 1] = 0;
+        if (content[strlen((char *)content) - 1] != '[')
+            content[strlen((char *)content) - 1] = 0;
         strcat((char *)content, "]");
     }
     return content;

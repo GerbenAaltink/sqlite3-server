@@ -11,7 +11,7 @@ server_build: ensure_bin
 	cd ./src/server && make build
 
 server_run:
-	./bin/sqlite3-server
+	./bin/sqlite3-server 8888 local.db
 
 client_build: ensure_bin
 	cd ./src/client/python && $(MAKE) install

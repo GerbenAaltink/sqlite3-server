@@ -15,6 +15,13 @@ int rc = 0;
 unsigned int log_line_length = 120;
 bool verbose = false;
 
+/*************  ✨ Codeium Command ⭐  *************/
+/**
+ * Attempt to connect to the database stored in the global variable
+ * `path`. If we are unable to connect, print an error message and
+ * exit. Otherwise, print a success message.
+ */
+/******  35b1a65d-4aae-4bef-bd98-5c53c0fe29c2  *******/
 void connect_db() {
   if (sqlite3_open(path, &db)) {
     printf("Can't open database: %s\n", sqlite3_errmsg(db));
@@ -89,7 +96,7 @@ rliza_t *db_execute(char *query, rliza_t *params) {
     }
 
     rliza_t *result = rliza_new(RLIZA_OBJECT);
-
+    long long count = 0;
     rliza_t *rows = rliza_new(RLIZA_ARRAY);
     while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
       rliza_t *row = rliza_new(RLIZA_ARRAY);
@@ -123,10 +130,14 @@ rliza_t *db_execute(char *query, rliza_t *params) {
         default:
           printf("Unknown column type\n");
         }
-        rliza_push(rows, row);
+        
       }
-      result->set_array(result, "rows", row);
-    }
+        
+      count++;
+      rliza_push(rows, row);
+      
+    }result->set_array(result, "rows", rows);
+      result->set_integer(result,"count",(long long)count);
     result->set_boolean(result, "success", true);
     return result;
   }
