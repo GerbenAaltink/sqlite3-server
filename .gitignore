@@ -1,0 +1,5 @@
+local.db
+bin/*
+src/client/python/.*
+src/client/python/_*
+sqlite3-server.zip 
