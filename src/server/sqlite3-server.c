@@ -1,5 +1,5 @@
-#include "rlib.h"
 #include "json.h"
+#include "rlib.h"
 #include <ctype.h>
 #include <signal.h>
 #include <sqlite3.h>
@@ -130,14 +130,13 @@ rliza_t *db_execute(char *query, rliza_t *params) {
         default:
           printf("Unknown column type\n");
         }
-        
       }
-        
+
       count++;
       rliza_push(rows, row);
-      
-    }result->set_array(result, "rows", rows);
-      result->set_integer(result,"count",(long long)count);
+    }
+    result->set_array(result, "rows", rows);
+    result->set_integer(result, "count", (long long)count);
     result->set_boolean(result, "success", true);
     return result;
   }
