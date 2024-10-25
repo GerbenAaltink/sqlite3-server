@@ -1,6 +1,6 @@
+#include "rlib.h"
 #include "json.h"
 #include <ctype.h>
-#include <rlib.h>
 #include <signal.h>
 #include <sqlite3.h>
 #include <stdbool.h>
