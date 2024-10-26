@@ -6,7 +6,8 @@ format:
 install:
 	-@rm -rf .venv 
 	python3 -m venv .venv
-	./.venv/bin/pip install -r requirements.txt
+	. ./.venv/bin/activate && cd ./utro && $(MAKE) build
+	./.venv/bin/pip install -e utro 
 	-@rm ./../../../bin/client
 	@echo "#!$(CURDIR)/.venv/bin/python $(CURDIR)/client.py" > ./../../../bin/client
 	@chmod +x ./../../../bin/client
