@@ -1,5 +1,8 @@
 # Utro client
 
+## Introduction
+Utro rest client for ranku server. The server is called ranku and is located in my ranku repository.
+
 ## Usage async
 ```python
 import asyncio
