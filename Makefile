@@ -8,7 +8,7 @@ server_build:
 	cd ./src/server && make build
 
 server_run:
-	../src/server/bin/sqlite3-server 8888 local.db
+	./src/server/bin/ranku 8888 local.db
 
 client_build: 
 	-@mkdir -p ./bin

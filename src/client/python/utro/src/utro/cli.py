@@ -128,11 +128,12 @@ def main():
                 continue
             
             has_rows = len(resp.get('rows',[])) > 0
-            if 'columns' in resp:
+            has_row_columns = has_rows and len(resp['rows'][0]) > 0 or False
+            if 'colums' in resp:
                 column_index = 0
                 for column in resp['columns']:
                     print(column,end="")
-                    if client.verbose and has_rows:
+                    if client.verbose and has_rows and column_index < len(resp['rows'][0]):
                         print("<{}>".format(type(resp['rows'][0][column_index]).__name__,""),end="")
                     column_index += 1
                     print("\t",end="")

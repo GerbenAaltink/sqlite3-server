@@ -21,7 +21,7 @@ async def process_batch(worker_nr,amount):
             await asyncio.gather(*tasks)
 
         with Bench("Tijd ophalen alle records\n"):
-            result = await client.execute("select * from test")
+            result = await client.execute("select arg1,arg2,arg3,arg4 from test")
             print(result)
             print(f"There are {result['count']} records\n")
         
