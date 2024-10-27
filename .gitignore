@@ -1,6 +1,5 @@
 local.db
 bin/*
-
 src/client/python/utro/dist
 src/client/python/.*
 src/client/python/_*
