@@ -30,10 +30,13 @@ def update_key_presses(url,key_presses):
 def completer(text, state):
     options = [".verbose", ".exit",".repeat","python",".presses"]
     import subprocess
-    process = subprocess.Popen(['bash', '-c', 'complete'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    for result in stdout.decode("utf-8").split("\n"):
-        options.append(result)
+    #process = subprocess.Popen(['bash', '-c', 'complete'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #stdout, stderr = process.communicate()
+    bash_history_path = pathlib.Path("~/.bash_history")
+    if bash_history_path.exists():
+        bash_history = bash_history_path.read_text()
+        for result in bash_history.split("\n"):
+            options.append(result)
     if pathlib.Path(os.getcwd()).joinpath(text.strip("./")).exists():
         for file in pathlib.Path(os.getcwd()).joinpath(text.strip("./")).glob("*"):
             options.append(text.lstrip("/") + file.name)
@@ -57,7 +60,7 @@ def main():
     readline.parse_and_bind("Control-a: pony")
     readline.parse_and_bind("Control-l: clear-screen")
     parser = argparse.ArgumentParser(description="A sample CLI tool.")
-    parser.add_argument("url", default="http://127.0.0.1:8888/", type=str, help="URL of backend server")
+    parser.add_argument("url", type=str, help="URL of backend server")
     parser.add_argument("--history", action="store_true", default="http://127.0.0.1:8888/", help="URL of backend server")
     parser.add_argument("--data")
     args = parser.parse_args()
@@ -129,7 +132,7 @@ def main():
             
             has_rows = len(resp.get('rows',[])) > 0
             has_row_columns = has_rows and len(resp['rows'][0]) > 0 or False
-            if 'colums' in resp:
+            if 'columns' in resp:
                 column_index = 0
                 for column in resp['columns']:
                     print(column,end="")

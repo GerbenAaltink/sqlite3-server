@@ -18,7 +18,7 @@ client_run:
 	./bin/client 
 
 utro:
-	./src/client/python/.venv/bin/utro http://127.0.0.1:8888
+	./src/client/python/.venv/bin/utro http://retoor:8888
 
 utro_history:
 	./src/client/python/.venv/bin/utro http://127.0.0.1:8888 --history --data=abc,def,ghi

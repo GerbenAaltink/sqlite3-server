@@ -77,7 +77,7 @@ class Client:
 
     def execute(self, query, params=None):
         async def _execute(context, query, params=None):
-            async with AsyncClient("http://127.0.0.1:8888/",verbose=context.verbose,keep_alive=context.keep_alive) as client:
+            async with AsyncClient(context.url,verbose=context.verbose,keep_alive=context.keep_alive) as client:
                 result = await client.execute(query, params)
                 context.verbose = client.verbose 
                 context.keep_alive = client.keep_alive
