@@ -14,7 +14,7 @@ sqlite3 *db = 0;
 char *errmsg = 0;
 int rc = 0;
 unsigned int log_line_length = 120;
-bool verbose = true;
+bool verbose = false;
 
 void print_partial(char *content, unsigned int length) {
     if (strlen(content) >= length) {
