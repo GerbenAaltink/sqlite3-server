@@ -1,4 +1,4 @@
-// RETOOR - Oct 27 2024
+// RETOOR - Oct 28 2024
 // MIT License
 // ===========
 
@@ -90,9 +90,9 @@ typedef unsigned char byte;
 #undef _POSIX_C_SOURCE
 #endif
 
-ulonglong rmalloc_count = 0;
-ulonglong rmalloc_alloc_count = 0;
-ulonglong rmalloc_free_count = 0;
+static ulonglong rmalloc_count = 0;
+static ulonglong rmalloc_alloc_count = 0;
+static ulonglong rmalloc_free_count = 0;
 
 void *rmalloc(size_t size) {
     void *result;
@@ -103,8 +103,17 @@ void *rmalloc(size_t size) {
     rmalloc_alloc_count++;
     return result;
 }
+void *rcalloc(size_t count, size_t size) {
+    void *result;
+    while (!(result = calloc(count, size))) {
+        fprintf(stderr, "Warning: calloc failed, trying again.\n");
+    }
+    rmalloc_alloc_count++;
+    rmalloc_count++;
+    return result;
+}
 void *rrealloc(void *obj, size_t size) {
-    if (obj == NULL) {
+    if (!obj) {
         rmalloc_count++;
         rmalloc_alloc_count++;
     }
@@ -134,6 +143,7 @@ void *rfree(void *obj) {
 
 #if RMALLOC_OVERRIDE
 #define malloc rmalloc
+#define calloc rcalloc
 #define realloc rrealloc
 #define free rfree
 #define strdup rstrdup
@@ -681,6 +691,13 @@ int rcat_main(int argc, char *argv[]) {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef RBUFFER_H
+#define RBUFFER_H
+#include <assert.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 typedef struct rbuffer_t {
     unsigned char *data;
     unsigned char *_data;
@@ -734,13 +751,6 @@ void rbuffer_free(rbuffer_t *rfb) {
     if (rfb->_data)
         free(rfb->_data);
     free(rfb);
-}
-
-unsigned char *buffer_to_string(rbuffer_t *rfb) {
-    unsigned char *result = rfb->_data;
-    rfb->_data = NULL;
-    rbuffer_free(rfb);
-    return result;
 }
 
 size_t rbuffer_push(rbuffer_t *rfb, unsigned char c) {
@@ -802,8 +812,8 @@ size_t ustrlen(const unsigned char *s) { return strlen((char *)s); }
 
 unsigned char *rbuffer_to_string(rbuffer_t *rfb) {
     unsigned char *result = rfb->_data;
-    rfb->data = NULL;
     rfb->_data = NULL;
+    rfb->data = NULL;
     rbuffer_free(rfb);
     return result;
 }
@@ -840,7 +850,6 @@ unsigned char *rbuffer_expect(rbuffer_t *rfb, char *options, char *ignore) {
         if (rbuffer_match_option(rfb, options) != NULL) {
             return rfb->data;
         }
-        printf("MATCIHGG\n");
         if (rbuffer_match_option(rfb, ignore)) {
             printf("SKIP:%s\n", rfb->data);
             rbuffer_pop(rfb);
@@ -853,11 +862,11 @@ unsigned char *rbuffer_expect(rbuffer_t *rfb, char *options, char *ignore) {
 unsigned char *rbuffer_consume(rbuffer_t *rfb, char *options, char *ignore) {
     unsigned char *result = NULL;
     if ((result = rbuffer_expect(rfb, options, ignore)) != NULL) {
-        printf("HAAA%s\n", result);
         rbuffer_pop(rfb);
     }
     return result;
 }
+#endif
 #ifndef RSTRING_H
 #define RSTRING_H
 #ifndef RMATH_H
@@ -1354,7 +1363,6 @@ typedef struct rliza_t {
         bool boolean;
         double number;
         struct rliza_t *object;
-        struct rliza_t **array;
         struct rliza_t **map;
         long long integer;
     } content;
@@ -1401,11 +1409,6 @@ void rliza_free(rliza_t *rliza) {
         }
         // free(rliza->content.map);
     }
-    // if (rliza->content.array) {
-    //     for (unsigned int i = 0; i < rliza->count; i++) {
-    //    rliza_free(rliza->content.array[i]);
-    //  printf("Removed array item\n");
-    //  }
 
     // free(rliza->content.array);
     //}
@@ -1506,7 +1509,7 @@ rliza_t *rliza_get_array(rliza_t *self, char *key) {
             strcmp(self->content.map[i]->key, key) == 0) {
             if (self->content.map[i]->type == RLIZA_ARRAY ||
                 self->content.map[i]->type == RLIZA_NULL) {
-                return *self->content.array;
+                return self->content.map[i];
             }
         }
     }
@@ -1646,8 +1649,7 @@ void rliza_set_boolean(rliza_t *self, char *key, bool value) {
 }
 
 rliza_t *rliza_new(rliza_type_t type) {
-    rliza_t *rliza = malloc(sizeof(rliza_t));
-    memset(rliza, 0, sizeof(rliza_t));
+    rliza_t *rliza = calloc(1, sizeof(rliza_t));
     rliza->type = type;
     rliza->key = NULL;
     rliza->count = 0;
@@ -1664,7 +1666,6 @@ rliza_t *rliza_new(rliza_type_t type) {
     rliza->set_array = rliza_set_array;
     // rliza->set_object = rliza_set_object;
     rliza->content.map = NULL;
-    rliza->content.array = NULL;
     rliza->content.object = NULL;
     rliza->value = NULL;
 
@@ -1713,7 +1714,6 @@ unsigned char *rliza_seek_string(char **content, char *options) {
             if (!strcmp(option, "\\d")) {
                 if (**content >= '0' && **content <= '9') {
                     // printf("Number match: %c\n", **content);
-
                     return (unsigned char *)*content;
                 }
             }
@@ -1848,7 +1848,7 @@ rliza_t *rliza_object_from_string(char **content) {
     return rliza;
 }
 unsigned char *rliza_object_to_string(rliza_t *rliza) {
-    size_t size = 1024 * 1024 * 10;
+    size_t size = 4096;
     unsigned char *content = (unsigned char *)malloc(size);
     content[0] = 0;
     if (rliza->type == RLIZA_INTEGER) {
@@ -1862,9 +1862,18 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
         char *escaped_string =
             (char *)malloc(strlen((char *)rliza->content.string) * 2 + 1);
         rstraddslashes((char *)rliza->content.string, escaped_string);
+
+        if (size < strlen((char *)rliza->content.string) * 2 + 1) {
+            size = strlen((char *)rliza->content.string) * 2 + 1;
+            content = realloc(content, size + 1024);
+        }
         if (rliza->key) {
-            sprintf((char *)content, "\"%s\":\"%s\"", rliza->key,
+            char *escaped_key =
+                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            rstraddslashes((char *)rliza->key, escaped_key);
+            sprintf((char *)content, "\"%s\":\"%s\"", escaped_key,
                     escaped_string);
+            free(escaped_key);
             // rliza->content.string);
         } else {
 
@@ -1904,9 +1913,14 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
         content[strlen((char *)content) - 1] = 0;
         strcat((char *)content, "}");
     } else if (rliza->type == RLIZA_ARRAY) {
-        if (rliza->key)
-            sprintf((char *)content, "\"%s\":[", rliza->key);
-        else
+        if (rliza->key) {
+            char *escaped_key =
+                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            rstraddslashes((char *)rliza->key, escaped_key);
+
+            sprintf((char *)content, "\"%s\":[", escaped_key);
+            free(escaped_key);
+        } else
             strcpy((char *)content, "[");
 
         for (unsigned i = 0; i < rliza->count; i++) {
@@ -1929,11 +1943,11 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
 }
 
 void rliza_push(rliza_t *self, rliza_t *obj) {
-
-    self->content.array =
-        realloc(self->content.array, sizeof(rliza_t *) * (self->count + 1));
-    self->content.array[self->count] = obj;
-    self->count++;
+    rliza_set_object(self, obj);
+    // self->content.array =
+    //     realloc(self->content.array, sizeof(rliza_t *) * (self->count + 1));
+    // self->content.array[self->count] = obj;
+    // self->count++;
 }
 
 #endif
