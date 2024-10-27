@@ -4,4 +4,6 @@ bin/*
 src/client/python/utro/dist
 src/client/python/.*
 src/client/python/_*
+src/client/python/utro/src/utro/_*
 sqlite3-server.zip 
+sqlite3-server.tar.gz

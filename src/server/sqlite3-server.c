@@ -107,33 +107,21 @@ size_t db_execute(rhttp_request_t *request, char *query, rliza_t *params) {
     } else {
         for (unsigned col = 0; col < params->count; col++) {
             if (params->content.map[col]->type == RLIZA_INTEGER) {
-                sqlite3_bind_int(stmt, col + 1,
-                                 params->content.map[col]->content.integer);
+                sqlite3_bind_int(stmt, col + 1, params->content.map[col]->content.integer);
             } else if (params->content.map[col]->type == RLIZA_STRING) {
-                if (params->content.map[col]->content.string &&
-                    *params->content.map[col]->content.string) {
-                    sqlite3_bind_text(
-                        stmt, col + 1,
-                        (char *)params->content.map[col]->content.string, -1,
-                        SQLITE_STATIC);
+                if (params->content.map[col]->content.string && *params->content.map[col]->content.string) {
+                    sqlite3_bind_text(stmt, col + 1, (char *)params->content.map[col]->content.string, -1, SQLITE_STATIC);
                 } else {
-                    printf("BINDED NULL\n");
                     sqlite3_bind_null(stmt, col + 1);
                 }
             } else if (params->content.map[col]->type == RLIZA_BOOLEAN) {
-                printf("BINDED BOOL %s\n",
-                       params->content.map[col]->content.boolean);
-                sqlite3_bind_int(stmt, col + 1,
-                                 params->content.map[col]->content.boolean);
+                sqlite3_bind_int(stmt, col + 1, params->content.map[col]->content.boolean);
             } else if (params->content.map[col]->type == RLIZA_NULL) {
-                printf("BINDED EXPLICIT_ NULL\n");
                 sqlite3_bind_null(stmt, col + 1);
             } else if (params->content.map[col]->type == RLIZA_NUMBER) {
-                sqlite3_bind_double(stmt, col + 1,
-                                    params->content.map[col]->content.number);
+                sqlite3_bind_double(stmt, col + 1, params->content.map[col]->content.number);
             } else {
-                printf("Unknown parameter type: %s\n",
-                       params->content.map[col]->key);
+                printf("Unknown parameter type: %s\n", params->content.map[col]->key);
             }
         }
 
@@ -146,7 +134,6 @@ size_t db_execute(rhttp_request_t *request, char *query, rliza_t *params) {
         if (!bytes_sent)
             return 0;
         long long count = 0;
-        // rliza_t *rows = rliza_new(RLIZA_ARRAY);
         while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
             rliza_t *row = rliza_new(RLIZA_ARRAY);
             if (count == 0) {
@@ -170,31 +157,25 @@ size_t db_execute(rhttp_request_t *request, char *query, rliza_t *params) {
                 int type = sqlite3_column_type(stmt, col);
                 switch (type) {
                 case SQLITE_INTEGER:
-                    // printf("Column %d is an INTEGER with value %d\n", col,
-                    // sqlite3_column_int(stmt, col));
-
-                    rliza_push(row,
-                               rliza_new_integer(
-                                   (long long)sqlite3_column_int(stmt, col)));
+                    rliza_push(row, rliza_new_integer((long long)sqlite3_column_int(stmt, col)));
                     break;
 
                 case SQLITE_FLOAT:
-                    // printf("Column %d is a FLOAT with value %f\n", col,
-                    rliza_push(row, rliza_new_number(
-                                        sqlite3_column_double(stmt, col)));
+                    rliza_push(row, rliza_new_number(sqlite3_column_double(stmt, col)));
                     break;
                 case SQLITE_TEXT:
-                    // printf("Column %d is TEXT with value %s\n", col,
-                    // sqlite3_column_text(stmt, col));
-
-                    rliza_push(row, rliza_new_string((
-                                        char *)sqlite3_column_text(stmt, col)));
+                    char *string = (char *)sqlite3_column_text(stmt, col);
+                    if (string && !strcmp(string, "true")) {
+                        rliza_push(row, rliza_new_boolean(true));
+                    } else if (string && !strcmp(string, "false")) {
+                        rliza_push(row, rliza_new_boolean(false));
+                    } else {
+                        rliza_push(row, rliza_new_string(string));
+                    }
                     break;
                 case SQLITE_BLOB:
-                    // printf("Column %d is a BLOB\n", col);
                     break;
                 case SQLITE_NULL:
-                    // printf("Column %d is NULL\n", col);
                     break;
                 default:
                     printf("Unknown column type\n");
@@ -207,16 +188,14 @@ size_t db_execute(rhttp_request_t *request, char *query, rliza_t *params) {
             count++;
 
             json_response = (char *)rliza_object_to_string(row);
-            char *prefixed_json_response =
-                (char *)malloc(strlen(json_response) + 1024);
+            char *prefixed_json_response = (char *)malloc(strlen(json_response) + 1024);
             prefixed_json_response[0] = 0;
             if (count > 1)
                 strcpy(prefixed_json_response, ",");
 
             strcat(prefixed_json_response, json_response);
             free(json_response);
-            size_t bytes_sent_chunk =
-                write_http_chunk(request, prefixed_json_response, false);
+            size_t bytes_sent_chunk = write_http_chunk(request, prefixed_json_response, false);
             if (!bytes_sent_chunk)
                 return 0;
             bytes_sent += bytes_sent_chunk;
@@ -231,8 +210,7 @@ size_t db_execute(rhttp_request_t *request, char *query, rliza_t *params) {
         sprintf(json_response, "%s,%s\r\n", rows_end, footer_end + 1);
         free(rows_end);
         free(footer_end);
-        size_t bytes_sent_chunk =
-            write_http_chunk(request, json_response, true);
+        size_t bytes_sent_chunk = write_http_chunk(request, json_response, true);
         if (bytes_sent_chunk == 0)
             return 0;
         bytes_sent += bytes_sent_chunk;
@@ -252,8 +230,7 @@ int request_handler(rhttp_request_t *r) {
     json[request_content_length] = 0;
     long total_size = 0;
     while (total_size != request_content_length) {
-        long chunk =
-            read(r->c, json + total_size, request_content_length - total_size);
+        long chunk = read(r->c, json + total_size, request_content_length - total_size);
         if (chunk <= 0) {
             close(r->c);
             return 1;

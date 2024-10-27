@@ -11,8 +11,7 @@ int main() {
     assert(json_validate("{\"test\":\"12.23\",\"test\":13.23}"));
     assert(json_validate("{   \" test \":    \"12   .   23\"   ,    \"test\"   "
                          " :   13.23    }"));
-    assert(json_validate(
-        "{   \" test \":    \"12   .   23\"   ,    \"test\"    :   1    }"));
+    assert(json_validate("{   \" test \":    \"12   .   23\"   ,    \"test\"    :   1    }"));
     exit(0);
     assert(!json_validate("[1, 2, 3]"));
     assert(!json_validate("{1, 2, 3}]"));

@@ -59,13 +59,11 @@ bool json_validate(char *content) {
                 continue;
             }
 
-            if (strlen(cleaned + i) >= 4 &&
-                strncmp(cleaned + i, "true", 4) == 0) {
+            if (strlen(cleaned + i) >= 4 && strncmp(cleaned + i, "true", 4) == 0) {
                 expected = 4;
                 i += 3;
                 continue;
-            } else if (strlen(cleaned + i) >= 5 &&
-                       strncmp(cleaned + i, "false", 5) == 0) {
+            } else if (strlen(cleaned + i) >= 5 && strncmp(cleaned + i, "false", 5) == 0) {
                 expected = 4;
                 i += 4;
                 continue;
