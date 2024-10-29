@@ -18,25 +18,31 @@ class AsyncClient:
         return self.headers.get("Connection") == "keep-alive"
     @keep_alive.setter
     def keep_alive(self, value):
-        if value:
+        if value and value != self.keep_alive:
             self.headers["Connection"] = "keep-alive"
-        else:
+            self.connect()
+        elif value != self.keep_alive:
             self.headers.pop("Connection", None)
+            self.connect()
 
     def __init__(self, url,keep_alive=False,verbose=False):
         self.timeout = aiohttp.ClientTimeout(total=10 * 60, sock_connect=10*60)
         self.url = url
         self.headers = {}
-        self.keep_alive = keep_alive
+        self.keep_alive = False
         self.connector = None 
         self.client = None
         self.verbose = verbose
-
-    async def connect(self):
-
+        
+    def connect(self):
+        if self.keep_alive and self.client:
+            return
+        if self.client:
+            return
         self.connector = aiohttp.TCPConnector() #keepalive_timeout=60
         self.client = aiohttp.ClientSession(headers=self.headers,connector=self.connector) # timeout=self.timeout 
         
+
     async def close(self):
         if(self.client):
             await self.client.close()
@@ -44,7 +50,10 @@ class AsyncClient:
             self.client = None
 
     async def __aenter__(self):
-        await self.connect()
+        self.connect()
+        return self
+
+    async def __enter__(self):
         return self
 
     async def execute(self, query, params=None):
@@ -55,6 +64,8 @@ class AsyncClient:
         payload = dict(query=query,params=params or [])
         if(self.verbose):
             print("sending",payload)
+        if not self.connector:
+            self.connect()
         response = await self.client.post(self.url, json=payload)
         if self.verbose:
             print("received",await response.text())

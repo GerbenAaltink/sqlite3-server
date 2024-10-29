@@ -28,7 +28,7 @@ void print_partial(char *content, unsigned int length) {
 }
 
 char *hexsize(size_t i) {
-    char *hex = (char *)malloc(4);
+    char *hex = (char *)malloc(20);
     sprintf(hex, "%X", (unsigned int)i);
     return hex;
 }
@@ -182,20 +182,20 @@ size_t db_execute(rhttp_request_t *request, char *query, rliza_t *params) {
                     break;
                 case SQLITE_TEXT:
                     char *string = (char *)sqlite3_column_text(stmt, col);
-                    char *escaped_string = (char *)malloc(strlen(string) * 2 + 1);
-                    rstraddslashes(string, escaped_string);
+                    //char *escaped_string = (char *)malloc(strlen(string) * 2 + 1);
+                    //rstraddslashes(string, escaped_string);
                     if (string && !strcmp(string, "true")) {
                         rliza_push(row, rliza_new_boolean(true));
                     } else if (string && !strcmp(string, "false")) {
                         rliza_push(row, rliza_new_boolean(false));
                     } else {
-                        rliza_push(row, rliza_new_string(escaped_string));
+                        rliza_push(row, rliza_new_string(string));
                     }
-                    free(escaped_string);
                     break;
                 case SQLITE_BLOB:
                     break;
                 case SQLITE_NULL:
+                    rliza_push(row, rliza_new_null());
                     break;
                 default:
                     printf("Unknown column type\n");
@@ -222,6 +222,8 @@ size_t db_execute(rhttp_request_t *request, char *query, rliza_t *params) {
             free(prefixed_json_response);
             rliza_free(row);
         }
+        if(count == 0)
+            rliza_free(result);
         sqlite3_finalize(stmt);
         char *rows_end = strdup(count ? "]" : "");
         char *footer_end = (char *)malloc(512);
@@ -303,6 +305,10 @@ rhttp_request_handler_t handler = request_handler;
 
 int main(int argc, char *argv[]) {
 
+    if(rargs_isset(argc,argv,"--verbose")){
+        verbose = true;
+    }
+
     if (atexit(exit_application) != 0) {
         printf("Couldn't register atexit handler. Database may close "
                "incorrectly.\n");
@@ -320,6 +326,8 @@ int main(int argc, char *argv[]) {
 
     connect_db();
 
+    printf("Serving on port %u.\n", port);
+    printf("Verbosity is %s.\n", verbose ? "on" : "off");
     rhttp_serve("0.0.0.0", port, 8096, 1, 1, handler, NULL);
 
     while (true) {

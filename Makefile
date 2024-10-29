@@ -10,6 +10,9 @@ server_build:
 server_run:
 	./src/server/bin/ranku 8888 local.db
 
+server_run_verbose:
+	./src/server/bin/ranku 8888 local.db --verbose
+
 client_build: 
 	-@mkdir -p ./bin
 	cd ./src/client/python && $(MAKE) install
