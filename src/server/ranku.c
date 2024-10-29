@@ -16,6 +16,7 @@ int rc = 0;
 unsigned int log_line_length = 120;
 bool verbose = false;
 
+
 void print_partial(char *content, unsigned int length) {
     if (strlen(content) >= length) {
         char c = content[length - 2];
@@ -100,7 +101,7 @@ size_t db_execute(rhttp_request_t *request, char *query, rliza_t *params) {
         rliza_t *error = rliza_new(RLIZA_OBJECT);
         error->set_string(error, "error", (char *)sqlite3_errmsg(db));
         error->set_boolean(error, "success", false);
-        char *json_response = (char *)rliza_object_to_string(error);
+        char *json_response = (char *)rliza_dumps(error);
 
         size_t bytes_sent = write_http_chunk(request, json_response, true);
         free(json_response);
@@ -139,7 +140,7 @@ size_t db_execute(rhttp_request_t *request, char *query, rliza_t *params) {
             if(last_insert_id)
                 result->set_integer(result, "last_insert_id",last_insert_id);
         }
-        char *json_response = (char *)rliza_object_to_string(result);
+        char *json_response = (char *)rliza_dumps(result);
         json_response[strlen(json_response) - 1] = '\0';
         size_t bytes_sent = write_http_chunk(request, json_response, false);
         free(json_response);
@@ -207,7 +208,7 @@ size_t db_execute(rhttp_request_t *request, char *query, rliza_t *params) {
 
             count++;
 
-            json_response = (char *)rliza_object_to_string(row);
+            json_response = (char *)rliza_dumps(row);
             char *prefixed_json_response = (char *)malloc(strlen(json_response) + 1024);
             prefixed_json_response[0] = 0;
             if (count > 1)
@@ -271,7 +272,7 @@ int request_handler(rhttp_request_t *r) {
         print_partial(json, log_line_length);
     }
     char *jsonp = json;
-    rliza_t *obj = rliza_object_from_string(&jsonp);
+    rliza_t *obj = rliza_loads(&jsonp);
     char *query = (char *)obj->get_string(obj, "query");
     rliza_t *params = obj->get_object(obj, "params");
     char *response_headers = (char *)calloc(1024, sizeof(char));
