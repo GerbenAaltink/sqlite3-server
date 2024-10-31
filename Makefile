@@ -8,7 +8,7 @@ server_build:
 	cd ./src/server && make build
 
 server_run:
-	./src/server/bin/ranku 8888 local.db
+	./src/server/bin/ranku 8887 local.db
 
 server_run_verbose:
 	./src/server/bin/ranku 8888 local.db --verbose
